@@ -11,7 +11,7 @@ HanziWriter.create('target-div', 'あ', {
   width: 400,
   height: 400,
   charDataLoader: (char, onLoad, onError) => {
-    fetch(`https://cdn.jsdelivr.net/gh/ailectra/kana-json@v0.0.1/data/${char}.json`)
+    fetch(`https://raw.githubusercontent.com/szklsrz/kana-json/refs/heads/main/data/${char}.json`)
       .then(res => res.json())
       .then(onLoad)
       .catch(onError);
