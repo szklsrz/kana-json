@@ -1,5 +1,5 @@
-const fs = require("node:fs");
-const path = require("node:path");
+const fs = require("fs");
+const path = require("path");
 const ffmpeg = require("fluent-ffmpeg");
 const ffmpegPath = require("ffmpeg-static");
 
@@ -12,41 +12,62 @@ if (!inputDir) {
   process.exit(1);
 }
 
-// 🎯 CONFIGURAÇÃO
-const BITRATE = "24k"; // 16k, 24k, 32k, 64k...
-const CHANNELS = 1;    // 1 = mono (voz), 2 = stereo
+const BITRATE = "24k";
+const CHANNELS = 1;
+const EXTENSIONS = [".m4a", ".mp3"];
 
-function convertFile(filePath) {
-  const outputPath = filePath.replace(/\.m4a$/i, ".webm");
+let queue = [];
 
-  if (fs.existsSync(outputPath)) {
-    console.log("⏭️ Já existe:", outputPath);
-    return;
-  }
-
-  console.log("🎧 Convertendo:", filePath);
-
-  ffmpeg(filePath)
-    .audioCodec("libopus")
-    .audioBitrate(BITRATE)
-    .audioChannels(CHANNELS)
-    .format("webm")
-    .on("end", () => console.log("✅ OK:", outputPath))
-    .on("error", err => console.log("❌ Erro:", err.message))
-    .save(outputPath);
-}
-
-function walk(dir) {
+function collectFiles(dir) {
   fs.readdirSync(dir).forEach(file => {
     const fullPath = path.join(dir, file);
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      walk(fullPath); // 🔁 recursivo
-    } else if (file.toLowerCase().endsWith(".m4a")) {
-      convertFile(fullPath);
+      collectFiles(fullPath);
+    } else if (EXTENSIONS.includes(path.extname(file).toLowerCase())) {
+      const output = fullPath.replace(/\.(m4a|mp3)$/i, ".webm");
+
+      if (!fs.existsSync(output)) {
+        queue.push({ input: fullPath, output });
+      }
     }
   });
 }
 
-walk(path.resolve(inputDir));
+function runQueue() {
+  if (queue.length === 0) {
+    console.log("🎉 Tudo convertido!");
+    return;
+  }
+
+  const file = queue.shift();
+
+  console.log(`🎧 Convertendo (${queue.length} restantes):`, file.input);
+
+  ffmpeg(file.input)
+    .audioCodec("libopus")
+    .audioBitrate(BITRATE)
+    .audioChannels(CHANNELS)
+    .format("webm")
+    .on("progress", p => {
+      if (p.percent) {
+        process.stdout.write(`⏳ ${p.percent.toFixed(1)}%   \r`);
+      }
+    })
+    .on("end", () => {
+      console.log("\n✅ OK:", file.output);
+      runQueue();
+    })
+    .on("error", err => {
+      console.log("\n❌ Erro:", err.message);
+      runQueue();
+    })
+    .save(file.output);
+}
+
+collectFiles(path.resolve(inputDir));
+
+console.log(`📂 ${queue.length} arquivos para converter\n`);
+
+runQueue();

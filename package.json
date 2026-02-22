@@ -4,7 +4,7 @@
   "description": "This is the hiragana and katakana data for [Hanzi Writer](https://github.com/chanind/hanzi-writer). This data is based on the hiragana and katakana data from [animCJK](https://github.com/parsimonhi/animCJK).",
   "main": "hanzi-writer.min.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "convert:audio": "node convertAudio.js ."
   },
   "keywords": [],
   "author": "",
